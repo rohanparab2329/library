@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="20592646-09fb-436b-8ea8-11f357aeaae4" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="3cdf09fd-8af2-4070-abbb-47a912568d95" file="db_properties.yaml" />
+	<configuration-properties doc:name="Configuration properties" doc:id="73c22673-3cbf-4aa3-8546-a0f745f79280" file="db_properties.yaml" />
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="4a17230c-7e12-4f13-9729-cf0df63d1b17" >
+		<db:my-sql-connection host="${db.host}" port="${db.port}" user="${db.username}" password="${db.password}" database="${db.database}" />
+	</db:config>
+	<flow name="studentFlow" doc:id="a9da6ea0-e9d1-47c3-a5ed-6fa85eab8534" >
+		<http:listener doc:name="GET,POST,PUT,PATCH,DELETE" doc:id="f322ed6b-a591-4e76-83b3-e2db6e2ad972" config-ref="HTTP_Listener_config" path="/lib" allowedMethods="GET,POST,PUT,PATCH,DELETE"/>
+		<choice doc:name="Choice" doc:id="7697d175-fafc-42d6-8532-8836ca15f3a1" >
+			<when expression='#[attributes.method =="GET"]'>
+				<logger level="INFO" doc:name="start get flow" doc:id="1288e2f3-bd9b-4754-9283-c02ad66f6f73" message="start get flow"/>
+				<flow-ref doc:name="select getflow" doc:id="9def25ab-5b37-4c2b-bc03-c4dc03fc4a7b" name="select_Flow"/>
+				<logger level="INFO" doc:name="end get flow" doc:id="df268596-f4e9-4dd7-a416-fe580a73674d" message="end get flow"/>
+			</when>
+			<when expression='#[attributes.method =="POST"]'>
+				<logger level="INFO" doc:name="start post flow" doc:id="46dc5468-20fc-40d3-b11b-237915bb9612" message="start post flow"/>
+				<flow-ref doc:name="insert Flow Reference" doc:id="f9da4b1d-9e0b-4bac-95dd-f72233ba6ec8" name="insertflowstart"/>
+				<logger level="INFO" doc:name="end post flow" doc:id="ebb0ae2a-90af-44fd-ad96-4c72d09bed77" message="end post flow"/>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="start put flow" doc:id="dab287f5-b843-404d-99a8-4af713d2103f" category="start put flow"/>
+				<flow-ref doc:name="put Flow Reference" doc:id="c98e1a70-e19a-47fc-9e76-dc9ad2ada240" name="updateflow"/>
+				<logger level="INFO" doc:name="end put flow" doc:id="7af6606c-7e33-4e1a-a99c-40bec5515992" message="end put flow"/>
+			</otherwise>
+		</choice>
+	</flow>
+	<sub-flow name="select_Flow" doc:id="a45f882c-c420-4a48-82fc-513e3a9382f2" >
+		<choice doc:name="Choice" doc:id="48bed5fb-22e8-4d5a-9cc9-ec8882751405" >
+			<when expression="#[attributes.queryParams.std_id != null]">
+				<db:select doc:name="Select" doc:id="6108faa4-3069-4529-aedd-2a7d47613967">
+					<db:sql ><![CDATA[select * from student where student_id =:ID;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	ID: attributes.queryParams.std_id
+}]]]></db:input-parameters>
+				</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Select" doc:id="41ace97c-1b78-45d8-b10b-44a5616eb25c">
+					<db:sql ><![CDATA[select * from student;]]></db:sql>
+				</db:select>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="0b80ed09-fae0-4f2e-bb19-51241f884544" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="insertflowstart" doc:id="8cb47c5b-9f41-4244-bdf2-79b3d9a35b0f" >
+		<db:bulk-insert doc:name="Bulk insert" doc:id="39bfe7ed-e0b4-481c-a9c9-daf4915a4c09" config-ref="Database_Config">
+			<db:sql ><![CDATA[insert into student (student_id, student_name, city, postalcode, country) values (:std_id, :std_name, :CITY, :POSTALCODE, :COUNTRY)]]></db:sql>
+		</db:bulk-insert>
+		<ee:transform doc:name="Transform Message" doc:id="f0e83a80-9a4f-4e0a-87d0-439c7c8e48d3" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"record inserted successfully"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="updateflow" doc:id="04b65c50-6943-4868-8e85-9bdcf247e4da" >
+		<ee:transform doc:name="Transform Message" doc:id="40d284db-682b-4a0f-876f-06f93ed128af" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+var arr = payload mapObject {
+"Query" : $$ ++ " = " ++ $
+} pluck $ joinBy ","
+
+---
+
+{
+	"query" : "update student set "  ++ arr ++  " where student_id = " ++ attributes.queryParams.id
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:update doc:name="Update" doc:id="eda0a53d-710f-4e34-9465-f23095748b36">
+			<db:sql ><![CDATA[#[payload.query]]]></db:sql>
+		</db:update>
+		<ee:transform doc:name="message" doc:id="84364741-6f80-48cd-b304-f12033797e7c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"udated successfully"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<flow name="bookflow" doc:id="99a7feb7-a6fd-4a46-934f-bf293a0557f4" >
+		<http:listener doc:name="GET,PUT,POST,PATCH,DELETE" doc:id="a6236e9e-ae6e-4b5b-b104-19c84b222770" config-ref="HTTP_Listener_config" path="/BOOKS" allowedMethods="GET,PUT,POST,PATCH,DELETE"/>
+		<choice doc:name="Choice" doc:id="852349bb-6fc0-4e49-85fe-24dc2e50d44f" >
+			<when expression='#[attributes.method =="GET"]'>
+				<logger level="INFO" doc:name="start get flow" doc:id="04711eef-9a51-4dfa-9f5a-f415b568d8e2" message="start get flow"/>
+				<flow-ref doc:name="selectFlow Reference" doc:id="6e73c8fb-8bd1-4e7b-bba3-e333309e1f0b" name="GETBOOKFLOW"/>
+				<logger level="INFO" doc:name="end get flow" doc:id="c314029b-887f-4c5d-90ff-293dd1b9b320" message="end get flow"/>
+			</when>
+			<when expression='#[attributes.method =="POST"]'>
+				<logger level="INFO" doc:name="START POST FLOW" doc:id="78990e1d-afa7-4208-9b87-4bea3a289541" message="START POST FLOW"/>
+				<flow-ref doc:name="Flow Reference" doc:id="b8ea3a1e-d150-4f85-810f-662ae352c510" name="post_FloWBOOKS"/>
+				<logger level="INFO" doc:name="END POST FLOW" doc:id="2f9428d8-9cac-451d-bee8-4fc91657c643" message="END POST FLOW"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="5ceedee2-1973-4a11-8cdc-3b9378569a37" message="start update book flow"/>
+				<ee:transform doc:name="Transform Message" doc:id="da632a26-237f-4586-98ec-3bd4416bb1b8">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+var arr = payload mapObject {
+"Query" : $$ ++ " = " ++ $
+} pluck $ joinBy ","
+
+---
+
+{
+	"query" : "update books set "  ++ arr ++  " where book_id = " ++ attributes.queryParams.bookId
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<db:update doc:name="Update" doc:id="94892cc3-eb63-4692-af4b-0c59e27166c5">
+					<db:sql ><![CDATA[#[payload.query]]]></db:sql>
+				</db:update>
+				<ee:transform doc:name="Transform Message" doc:id="fcfe0f85-c963-4a45-bfe7-6a59abdcee42" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+"updated successfully"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="end update flow" doc:id="4adacbf4-83de-4432-80cd-2d3d3c035674" message="end update flow"/>
+			</otherwise>
+		</choice>
+	</flow>
+	<sub-flow name="post_FloWBOOKS" doc:id="a89ac72c-dee7-481f-9140-314ac395171a" >
+		<db:bulk-insert doc:name="Bulk insert" doc:id="63dfd619-2244-4fbf-bd76-0ea2a3e01ed8">
+			<db:sql ><![CDATA[insert into books(book_id, book_name, author, rating) values (:bk_id, :bk_name, :athr, :rate);]]></db:sql>
+		</db:bulk-insert>
+		<ee:transform doc:name="Transform Message" doc:id="ce09f5a4-588d-452e-89a3-a817ebce697b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"updated successfully"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="GETBOOKFLOW" doc:id="6e5cea6d-29ae-4bcf-b0c1-847a7821e80a" >
+		<choice doc:name="Choice" doc:id="cd4a89e7-2675-4929-9865-eecbf955cbe1" >
+			<when expression="#[attributes.queryParams.id != null]">
+				<db:select doc:name="Select" doc:id="284da039-c002-447b-a9dc-2ce5480143c2">
+					<db:sql ><![CDATA[SELECT * FROM BOOKS WHERE book_id =:Id;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	Id: attributes.queryParams.id
+}]]]></db:input-parameters>
+				</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Select" doc:id="00d85456-e8e5-4601-a887-375298912c02">
+					<db:sql ><![CDATA[select * from BOOKS]]></db:sql>
+				</db:select>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="d06246a6-95d2-4971-b87c-dbee6f7579cc">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<flow name="bookissueFlow" doc:id="49974402-6fc1-4afb-bd7d-118d3266e467" >
+		<http:listener doc:name="POST,GET" doc:id="615f8610-6a03-48d2-ada3-13a27480322c" config-ref="HTTP_Listener_config" path="/bookissue" allowedMethods="POST,GET"/>
+		<choice doc:name="Choice" doc:id="210b1295-4edf-46e7-b80e-38bb752d3192" >
+			<when expression='#[attributes.method == "POST"]'>
+				<logger level="INFO" doc:name="START POST FLOW" doc:id="97f6d0d8-8f59-4d95-9f40-8a19ed563ff8" message="START POST FLOW"/>
+				<db:bulk-insert doc:name="Bulk insert" doc:id="53ded184-5b12-452a-94ee-2c73c8a2eeee">
+			<db:sql><![CDATA[INSERT INTO BOOKISSUE (student_id, book_id, issuedate) values (:stud_id, :book_id, :date);]]></db:sql>
+		</db:bulk-insert>
+				<ee:transform doc:name="Transform Message" doc:id="88bceb9a-6a76-462c-9df6-cb93429ee4bd">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+"successfully"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<logger level="INFO" doc:name="END POST FLOW" doc:id="b9f9b344-f72e-4997-87f4-074ba391c05a" message="END POST FLOW"/>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="start get flow" doc:id="1c7c949e-daa6-4ba5-9f67-d4584c1774d5" message="start get flow"/>
+				<flow-ref doc:name="Flow Reference" doc:id="663fe70e-05aa-4a12-8f79-3c6190b17add" name="bookissuegetFlow"/>
+				<logger level="INFO" doc:name="end get flow" doc:id="17edec18-702e-414c-80bf-27bf84886d7e" message="end get flow"/>
+			</otherwise>
+		</choice>
+	</flow>
+	<sub-flow name="bookissuegetFlow" doc:id="94ea9898-6040-41f4-b61e-d42dfdfa1680" >
+		<choice doc:name="Choice" doc:id="03f77fbd-165c-46e5-af7a-b836ecd457ac" >
+			<when expression="#[attributes.queryParams.std_id != null]">
+				<db:select doc:name="Select" doc:id="55296c08-a012-42d7-ae27-2d09ff3a9f01">
+					<db:sql ><![CDATA[select * from bookissue where student_id =:ID;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	ID:attributes.queryParams.std_id
+}]]]></db:input-parameters>
+				</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Select" doc:id="bc1c5059-50bb-46af-8a9b-df6056b0d3ed">
+					<db:sql ><![CDATA[select * from bookissue]]></db:sql>
+				</db:select>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="f0653a5f-3a06-4257-9776-ee1a38a0d0d6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+</mule>
