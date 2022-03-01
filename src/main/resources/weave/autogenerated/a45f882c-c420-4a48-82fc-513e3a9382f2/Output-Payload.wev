@@ -1,0 +1,9 @@
+%dw 2.0
+
+type auto_a45f882c_c420_4a48_82fc_513e3a9382f2_Output_Payload = Array<{ _?: java_lang_Object }> | Array<{|  student_id: Number,   student_name?: String,   city?: String,   postalcode?: Number,   country?: String|}>
+type java_lang_Object = {|  |} {"typeAlias": "Object",
+"class": "java.lang.Object",
+"typeId": "java.lang.Object"}
+
+
+
